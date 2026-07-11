@@ -77,7 +77,7 @@ if uploaded_file:
         use_container_width=True,
     )
 
-if st.button("🔍 Analyze Image"):
+if st.button(" Analyze Image"):
     if not config.GROQ_API_KEY:
         st.error("Groq API key is missing. Please add it to your .env file.")
     elif not uploaded_file:
@@ -86,7 +86,7 @@ if st.button("🔍 Analyze Image"):
         with st.spinner("The AI is studying your image..."):
             try:
                 st.success("Report ready!")
-                st.subheader("📝 AI Report")
+                st.subheader(" AI Report")
                 st.write(analyze_image(uploaded_file, report_style))
             except Exception as error:
                 st.error(f"Something went wrong: {error}")
