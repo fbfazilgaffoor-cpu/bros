@@ -1,104 +1,174 @@
 // ============================================================
-//  LESSON 4 — The Kinetic Engine: Movement & Player State
-//  ✏️  Write your code in each function below.
+//  LESSON 5 — Combat, Loot & Quests
+//  ✏️  Write your Lesson 5 code in the marked section below.
 //  Do NOT modify engine.js or App.jsx
 //
-//  Your code here will be carried forward into Lesson 5 & 6.
+//  Lesson 4 code is pre-filled and working — do not change it.
+//  Your Lesson 5 code goes at the bottom.
 // ============================================================
 
-import { TILE_S, WORLD_W, WORLD_H, isWalkable, speedMult, T } from './engine.js'
+import { ENEMY_TYPES, createEnemyTemplate } from './engine.js'
+
+// ════════════════════════════════════════════════════════════
+//  ✅ LESSON 4 — Complete (do not change)
+// ════════════════════════════════════════════════════════════
+
+export function createPlayer(startX = 0, startY = 0) {
+  return {
+    x: startX,
+    y: startY,
+    hp: 120,
+    maxHp: 120,
+    stamina: 100,
+    maxStamina: 100,
+    xp: 0,
+    level: 1,
+    gold: 0,
+    potions: 3,
+    kills: 0,
+    state: 'idle',
+    dir: 'down',
+    facingDir: 'right',
+    comboCount: 0,
+    invincible: 0,
+    attackCd: 0,
+    dodgeCd: 0,
+    score: 0,
+  }
+}
+
+export function movePlayer(player, direction, tiles) {
+  const TILE_S = 48, WORLD_W = 20, WORLD_H = 15
+  let newX = player.x
+  let newY = player.y
+  if (direction === 'up')    newY -= TILE_S
+  if (direction === 'down')  newY += TILE_S
+  if (direction === 'left')  newX -= TILE_S
+  if (direction === 'right') newX += TILE_S
+  const tx = Math.floor(newX / TILE_S)
+  const ty = Math.floor(newY / TILE_S)
+  if (tx < 0 || tx >= WORLD_W || ty < 0 || ty >= WORLD_H) return player
+  const T = { DEEP_SEA:0, SEA:1, ROCK:8, MOUNTAIN:9 }
+  const t = tiles[ty][tx]
+  if (t === T.DEEP_SEA || t === T.SEA || t === T.ROCK || t === T.MOUNTAIN) return player
+  return { ...player, x: newX, y: newY, dir: direction, facingDir: direction === 'left' ? 'left' : 'right', state: 'walking' }
+}
+
+export function getSpeedMultiplier(player, tiles) {
+  const TILE_S = 48, WORLD_W = 20, WORLD_H = 15
+  const tx = Math.floor(player.x / TILE_S)
+  const ty = Math.floor(player.y / TILE_S)
+  if (tx < 0 || tx >= WORLD_W || ty < 0 || ty >= WORLD_H) return 1.0
+  const T = { SHALLOW:2, FOREST:6, DENSE_FOREST:7, BAMBOO:14, TALL_GRASS:5, PATH:11, BRIDGE:16, SNOW:10 }
+  const t = tiles[ty][tx]
+  if (t === T.SHALLOW) return 0.5
+  if (t === T.FOREST || t === T.DENSE_FOREST || t === T.BAMBOO) return 0.72
+  if (t === T.TALL_GRASS) return 0.85
+  if (t === T.PATH || t === T.BRIDGE) return 1.18
+  if (t === T.SNOW) return 0.78
+  return 1.0
+}
+
+export function collectItem(player, item) {
+  if (item.type === 'coin') {
+    return { player: { ...player, gold: player.gold + 10 }, message: '💰 +10 gold' }
+  }
+  if (item.type === 'potion') {
+    return { player: { ...player, potions: player.potions + 1 }, message: '🧪 +1 potion' }
+  }
+  return { player, message: '' }
+}
+
+export function checkLevelUp(player) {
+  const threshold = player.level * 150
+  if (player.xp >= threshold) {
+    return {
+      player: {
+        ...player,
+        level: player.level + 1,
+        xp: player.xp - threshold,
+        maxHp: player.maxHp + 12,
+        hp: player.maxHp + 12,
+        maxStamina: player.maxStamina + 5,
+        stamina: player.maxStamina + 5,
+      },
+      leveledUp: true,
+    }
+  }
+  return { player, leveledUp: false }
+}
+
+// ════════════════════════════════════════════════════════════
+//  ✏️ LESSON 5 — Write your code below
+// ════════════════════════════════════════════════════════════
 
 // ── TASK 1 ───────────────────────────────────────────────────
-// createPlayer(startX, startY)
-// Build and return the player object.
-// startX, startY are pixel coordinates.
-//
-// Required fields:
-//   x, y               — use startX, startY
-//   hp, maxHp          — 120
-//   stamina, maxStamina — 100
-//   xp, level          — 0, 1
-//   gold               — 0
-//   potions            — 3
-//   kills              — 0
-//   state              — 'idle'
-//   dir                — 'down'
-//   facingDir          — 'right'
-//   comboCount         — 0
-//   invincible         — 0
-//   attackCd           — 0
-//   dodgeCd            — 0
-//   score              — 0
+// spawnEnemy(type)
+// Use createEnemyTemplate(type) from engine.js.
+// Set a random angle: Math.random() * Math.PI * 2
+// Returns the enemy object.
 
-export function createPlayer(startX, startY) {
+export function spawnEnemy(type) {
   // ✏️ YOUR CODE HERE
 
 }
 
 // ── TASK 2 ───────────────────────────────────────────────────
-// movePlayer(player, direction, tiles)
-// Move the player one tile in the given direction.
-// direction: 'up' | 'down' | 'left' | 'right'
+// attackEnemy(player, enemy)
+// Damage formula:
+//   newCombo = (player.comboCount + 1) % 4
+//   isBig    = (newCombo === 3)
+//   damage   = 12 + player.level * 3 + (isBig ? 22 : 0) + Math.floor(Math.random() * 8)
 //
-// Steps:
-//   1. Calculate new x/y by ±TILE_S
-//   2. Tile coords: tx = Math.floor(newX / TILE_S)
-//   3. Block if out of bounds (tx < 0 || tx >= WORLD_W etc.)
-//   4. Block if !isWalkable(tiles[ty][tx])
-//   5. Update dir, facingDir ('left' if moving left, else 'right')
-//   6. Set state = 'walking'
-//   7. Return { ...player, x, y, dir, facingDir, state }
+// Apply damage to enemy.hp (min 0).
+// If killed:
+//   enemy.alive = false
+//   player.xp   += ENEMY_TYPES[enemy.type].xp
+//   player.gold  += Math.floor(ENEMY_TYPES[enemy.type].xp * 0.5)
+//   player.kills += 1
+//   player.score += ENEMY_TYPES[enemy.type].xp * 10
+//
+// Returns: { player, enemy, damage, killed, isBig }
 
-export function movePlayer(player, direction, tiles) {
+export function attackEnemy(player, enemy) {
   // ✏️ YOUR CODE HERE
 
 }
 
 // ── TASK 3 ───────────────────────────────────────────────────
-// getSpeedMultiplier(player, tiles)
-// Return the terrain speed multiplier for the player's tile.
-// Use speedMult(tileType) from engine.js.
-//
-// Steps:
-//   1. tx = Math.floor(player.x / TILE_S), ty = Math.floor(player.y / TILE_S)
-//   2. Return 1.0 if out of bounds
-//   3. Return speedMult(tiles[ty][tx])
-//
-// Reference: PATH=1.18, GRASS=1.0, TALL_GRASS=0.85,
-//            FOREST=0.72, SNOW=0.78, SHALLOW=0.5
+// enemyAttack(enemy, player)
+// damage = ENEMY_TYPES[enemy.type].atk + Math.floor(Math.random() * 7)
+// player.hp = Math.max(0, player.hp - damage)
+// player.invincible = 0.42
+// Returns: { player, damage }
 
-export function getSpeedMultiplier(player, tiles) {
+export function enemyAttack(enemy, player) {
   // ✏️ YOUR CODE HERE
 
 }
 
 // ── TASK 4 ───────────────────────────────────────────────────
-// collectItem(player, item)
-// Apply item effect and return a message.
-//
-//   'coin'   → player.gold += 10  → message: '💰 +10 gold'
-//   'potion' → player.potions += 1 → message: '🧪 +1 potion'
-//
-// Returns: { player, message }
+// usePotion(player)
+// If player.potions <= 0: return { player, healed: 0 }
+// heal = Math.min(55, player.maxHp - player.hp)
+// player.hp += heal
+// player.potions -= 1
+// Returns: { player, healed }
 
-export function collectItem(player, item) {
+export function usePotion(player) {
   // ✏️ YOUR CODE HERE
 
 }
 
 // ── TASK 5 ───────────────────────────────────────────────────
-// checkLevelUp(player)
-// Level up if player.xp >= player.level * 150
-//
-// On level up:
-//   level += 1
-//   xp -= threshold
-//   maxHp += 12,  hp = maxHp
-//   maxStamina += 5, stamina = maxStamina
-//
-// Returns: { player, leveledUp }
+// updateQuestProgress(quests, type, amount)
+// For each quest:
+//   Skip if quest.completed or quest.type !== type
+//   quest.progress = (quest.progress ?? 0) + amount
+//   If quest.progress >= quest.count: quest.completed = true
+// Returns updated quests array (use .map())
 
-export function checkLevelUp(player) {
+export function updateQuestProgress(quests, type, amount) {
   // ✏️ YOUR CODE HERE
 
 }
