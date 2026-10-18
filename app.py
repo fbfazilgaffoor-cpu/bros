@@ -1,27 +1,6 @@
-"""
-╔══════════════════════════════════════════════════════════════╗
-║  LESSON 3 — Adding Verification to the AI Generation Flow    ║
-╚══════════════════════════════════════════════════════════════╝
-
-GOAL: Add hCaptcha server-side verification so /generate only
-      runs after the user solves the captcha challenge.
-
-YOUR TASKS (app.py):
-  1. Add HCAPTCHA_SECRET and HCAPTCHA_VERIFY_URL constants
-  2. Write verify_hcaptcha(token) — POST to HCAPTCHA_VERIFY_URL
-     with secret + token, return resp.json()["success"]
-  3. Inside /generate: get token from request, return 400 if
-     missing, return 400 if verify_hcaptcha(token) is False
-
-YOUR TASKS (static/js/studio.js):
-  4. Write hcaptchaReady() — render the widget with hcaptcha.render()
-  5. Wire Generate button to show the captcha modal
-  6. Wire Cancel button to hide the modal
-  7. Write runGeneration(token) — POST to /generate with token,
-     render concept on success
-
-Run:  python app.py  →  http://localhost:5000/studio
-"""
+HCAPTCHA_SECRET     =os.environ.get("HCAPTCHA_SECRET",
+"0x0000000000000")
+HCAPTCHA_VERIFY_URL = "https://api.hcaptcha.com/siteverify"
 
 import os, json, requests
 from flask import Flask, render_template, request, jsonify
@@ -68,8 +47,13 @@ def generate_concept(prefs):
     return json.loads(raw.strip().rstrip("```").strip())
 
 
-# ── TODO 2: Write verify_hcaptcha(token) ──────────────────────
-
+def verify_captcha(token):
+    try:
+        r = requests.post(HCAPTCHA_VERIFY_URL,
+                          data={"secret": HCAPTCHA_SECRET,  "response": token},  timeout=5)
+        return r.json(),.get("success", False)
+    except Exception:
+        return False
 
 @app.route("/")
 def index():
@@ -88,7 +72,11 @@ def history():
 def generate():
     data = request.get_json(silent=True) or request.form
 
-    # ── TODO 3: Verify hCaptcha token before proceeding ───────
+token = data.get("h-captcha-respnse", "")
+    if not token:
+        return jsonify({"error": "Please complete the CAPTCHA."}), 400
+    if not verify_hcaptcha(token):
+        return jsonify({"error": "CAPTCHA verification failed."}), 400
 
     prefs = get_prefs(data)
     try:
