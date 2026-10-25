@@ -110,12 +110,16 @@ def generate_sneaker_image(prompt):
     return None
 
 
-# ── TODO 1: Complete build_image_prompt(prefs) ────────────────
-# Use hex_to_color_name() for primary_color and accent_color.
-# Return a descriptive FLUX prompt string.
-# Append ", {inspiration} theme" if prefs["inspiration"] is set.
+
 def build_image_prompt(prefs):
-    pass  # replace with your implementation
+    p = hex_to_color_name(prefs["primary_color"])
+    a = hex_to_color_name(prefs["accent_color"])
+    prompt = (f"Professional product photography of a {prefs['style']} sneaker,"
+              f"{p} {prefs['material']} upper, {a} accent, {a} heel, white sole,"
+              f"side view, white background, sharp focus, 8k, shoe only")
+    if prefs.get("inspiration"):
+        prompt += f", {prefs['inspiration']} theme"
+        return prompt
 
 
 @app.route("/")
